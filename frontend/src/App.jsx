@@ -9,14 +9,16 @@ import DashboardLayout from "./layouts/DashboardLayout.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import OTPVerification from "./pages/OTPVerification.jsx";
-import AuthCallback from "./pages/AuthCallback.jsx";
 
-import Dashboard from "./pages/Dashboard.jsx";
+import Dashboard from "./pages/Auth/Dashboard.jsx";
 import Projects from "./pages/Projects.jsx";
 import Tasks from "./pages/Tasks.jsx";
-// import Settings from "./pages/Settings";
-import AdminPanel from "./pages/AdminPanel.jsx";
-// import NotFound from "./pages/NotFound";
+import AdminPanel from "./pages/Auth/AdminPanel.jsx";
+
+// ✅ Materials pages
+import MaterialsPage from "./pages/Materials/MaterialsPage.jsx";
+import MaterialForm from "./pages/Materials/MaterialForm.jsx";
+import MaterialDetail from "./pages/Materials/MaterialDetail.jsx";
 
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { token, user } = useContext(AuthContext);
@@ -35,13 +37,14 @@ const App = () => {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Auth layout */}
           <Route element={<AuthLayout />}>
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/verify-otp" element={<OTPVerification />} />
           </Route>
 
-          {/* Protected app routes with outlet pages */}
+          {/* Protected app routes */}
           <Route
             path="/dashboard"
             element={
@@ -51,24 +54,16 @@ const App = () => {
             }
           >
             <Route index element={<Dashboard />} />
-            
-            <Route path="projects" element={<Projects />} />
-            {/* <Route path="tasks" element={<Tasks />} />
-            <Route path="settings" element={<Settings />} /> */}
+            <Route path="Projects" element={<Projects />} />
+            <Route path="tasks" element={<Tasks />} />
 
-              <Route path="tasks" element={<Tasks />} />
-              
+            {/* ✅ Materials routes */}
+            <Route path="materials" element={<MaterialsPage />} />
+            <Route path="materials/new" element={<MaterialForm />} />
+            <Route path="materials/:id" element={<MaterialDetail />} />
           </Route>
 
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          {/* <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          /> */}
+          {/* Admin Panel */}
           <Route
             path="/admin"
             element={
@@ -77,6 +72,8 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* Default redirect */}
           <Route path="/" element={<Navigate to="/signin" />} />
         </Routes>
       </AuthProvider>

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import UsersTab from "../components/UsersTab";
-import RolesTab from "../components/RolesTab";
-import PermissionsTab from "../components/PermissionsTab";
+import UsersTab from "../../components/UsersTab";
+import RolesTab from "../../components/RolesTab";
+import PermissionsTab from "../../components/PermissionsTab";
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState("users");

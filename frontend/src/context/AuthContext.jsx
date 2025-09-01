@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       axios
-        .get(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
+        .get(`${import.meta.env.VITE_API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((response) => {
@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, password) => {
     const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/auth/register`,
+      `${import.meta.env.VITE_API_URL}/auth/register`,
       {
         email,
         password,
@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/auth/login`,
+      `${import.meta.env.VITE_API_URL}/auth/login`,
       {
         email,
         password,
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }) => {
 
   const verifyOTP = async (email, code) => {
     const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/auth/verify-otp`,
+      `${import.meta.env.VITE_API_URL}/auth/verify-otp`,
       {
         email,
         code,

@@ -21,6 +21,11 @@ export default function Sidebar() {
           <span>📁</span> <span>Projects</span>
         </NavLink>
 
+        {/* ✅ New: Materials */}
+        <NavLink to="Materials" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>
+          <span>📦</span> <span>Materials</span>
+        </NavLink>
+
         <NavLink to="tasks" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>
           <span>✅</span> <span>Tasks</span>
         </NavLink>

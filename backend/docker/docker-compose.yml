@@ -1,0 +1,66 @@
+version: "3.8"
+services:
+  mongo:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+  user-service:
+    build: ./user-service
+    ports:
+      - "3001:3001"
+    environment:
+      MONGO_URI: "mongodb://admin:password@mongo:27017/food-delivery?authSource=admin"
+      JWT_SECRET: "your-secret-key-here"
+    depends_on:
+      - mongo
+  restaurant-service:
+    build: ./restaurant-service
+    ports:
+      - "3002:3002"
+    environment:
+      MONGO_URI: "mongodb://admin:password@mongo:27017/food-delivery?authSource=admin"
+    depends_on:
+      - mongo
+  order-service:
+    build: ./order-service
+    ports:
+      - "3003:3003"
+    environment:
+      MONGO_URI: "mongodb://admin:password@mongo:27017/food-delivery?authSource=admin"
+    depends_on:
+      - mongo
+  delivery-service:
+    build: ./delivery-service
+    ports:
+      - "3004:3004"
+    environment:
+      MONGO_URI: "mongodb://admin:password@mongo:27017/food-delivery?authSource=admin"
+    depends_on:
+      - mongo
+  payment-service:
+    build: ./payment-service
+    ports:
+      - "5005:5005"
+    environment:
+      MONGO_URI: "mongodb://admin:password@mongo:27017/food-delivery?authSource=admin"
+    depends_on:
+      - mongo
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "3006:3006"
+    environment:
+      MONGO_URI: "mongodb://admin:password@mongo:27017/food-delivery?authSource=admin"
+    depends_on:
+      - mongo
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+volumes:
+  mongo-data:

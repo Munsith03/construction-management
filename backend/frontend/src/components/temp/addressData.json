@@ -1,0 +1,40 @@
+{
+  "regions": [
+    {
+      "id": 1,
+      "name": "Region 1",
+      "provinces": [
+        {
+          "id": 101,
+          "name": "Province A",
+          "districts": [
+            {
+              "id": 1001,
+              "name": "District X",
+              "cities": [
+                { "id": 10001, "name": "City 1" },
+                { "id": 10002, "name": "City 2" }
+              ]
+            },
+            {
+              "id": 1002,
+              "name": "District Y",
+              "cities": [{ "id": 10003, "name": "City 3" }]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Region 2",
+      "provinces": [
+        {
+          "id": 102,
+          "name": "Province B",
+          "districts": []
+        }
+      ]
+    }
+  ]
+}

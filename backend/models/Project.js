@@ -1,15 +1,24 @@
 // server/models/Project.js
 import mongoose from "mongoose";
 
+const WeatherSchema = new mongoose.Schema(
+  {
+    tempC: Number,
+    windKph: Number,
+    code: Number,
+    description: String,
+    fetchedAt: Date,
+  },
+  { _id: false }
+);
+
 const ProjectSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
 
-    // Construction-specific metadata
     client: { type: String, trim: true, default: "" },
     location: { type: String, trim: true, default: "" },
 
-    // Status & priority
     status: {
       type: String,
       enum: ["Planning", "In Progress", "On Hold", "Completed"],
@@ -21,20 +30,21 @@ const ProjectSchema = new mongoose.Schema(
       default: "Medium",
     },
 
-    // Ownership & description
     owner: { type: String, trim: true, default: "Unassigned" },
     description: { type: String, default: "" },
 
-    // Budgeting
-    currency: { type: String, default: "LKR" }, // change default if you prefer "USD"
+    currency: { type: String, default: "LKR" },
     budget: { type: Number, min: 0, default: 0 },
 
-    // Timeline
     startDate: { type: Date },
     deadline: { type: Date },
 
-    // Execution tracking
-    progress: { type: Number, min: 0, max: 100, default: 0 }, // %
+    progress: { type: Number, min: 0, max: 100, default: 0 },
+
+    // Map + Weather
+    lat: { type: Number },
+    lon: { type: Number },
+    weather: { type: WeatherSchema, default: null },
   },
   { timestamps: true }
 );

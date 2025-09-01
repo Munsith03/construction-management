@@ -1,25 +1,10 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import AuthContext from "../context/AuthContext";
+import MapPicker from "../ui/MapPicker";
 import {
-  Building2,
-  MapPin,
-  User,
-  CalendarDays,
-  DollarSign,
-  TrendingUp,
-  Clock,
-  Search,
-  Filter,
-  PlusCircle,
-  Edit3,
-  Trash2,
-  Loader2,
-  Layers,
-  CheckCircle2,
-  PauseCircle,
-  Hammer,
-  AlertTriangle,
-  ChevronDown,
+  Building2, MapPin, User, CalendarDays, DollarSign, TrendingUp, Clock, Search, Filter, PlusCircle,
+  Edit3, Trash2, Loader2, Layers, CheckCircle2, PauseCircle, Hammer, AlertTriangle, ChevronDown,
+  Cloud, Sun, CloudRain, CloudSnow, CloudLightning
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -33,52 +18,39 @@ const fmtCurrency = (amount, currency = "LKR") => {
     return `${currency} ${Number(amount).toLocaleString()}`;
   }
 };
-
 const daysLeft = (deadline) => {
   if (!deadline) return null;
   const d = new Date(deadline);
   const now = new Date();
-  const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
-  return diff;
+  return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
 };
-
 const statusMeta = {
-  "Planning": { color: "bg-blue-100 text-blue-700 border-blue-200", Icon: Layers },
+  Planning: { color: "bg-blue-100 text-blue-700 border-blue-200", Icon: Layers },
   "In Progress": { color: "bg-lime-100 text-lime-700 border-lime-200", Icon: Hammer },
   "On Hold": { color: "bg-gray-100 text-gray-700 border-gray-200", Icon: PauseCircle },
-  "Completed": { color: "bg-emerald-100 text-emerald-700 border-emerald-200", Icon: CheckCircle2 },
+  Completed: { color: "bg-emerald-100 text-emerald-700 border-emerald-200", Icon: CheckCircle2 },
 };
-
 const priorityPill = {
   High: "bg-red-100 text-red-700 border-red-200",
   Medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
   Low: "bg-blue-100 text-blue-700 border-blue-200",
 };
-const priorityDot = {
-  High: "bg-red-500",
-  Medium: "bg-yellow-500",
-  Low: "bg-blue-500",
+const priorityDot = { High: "bg-red-500", Medium: "bg-yellow-500", Low: "bg-blue-500" };
+
+const weatherIcon = (code) => {
+  if (code == null) return Cloud;
+  if ([0, 1].includes(code)) return Sun;
+  if ([2, 3, 45, 48].includes(code)) return Cloud;
+  if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code)) return CloudRain;
+  if ([71,73,75,77,85,86].includes(code)) return CloudSnow;
+  if ([95,96,99].includes(code)) return CloudLightning;
+  return Cloud;
 };
 
-/* Small UI atoms */
+/* ---------- Small UI atoms ---------- */
 function Label({ children }) {
   return <label className="block text-sm font-medium text-gray-700 mb-1.5 tracking-tight">{children}</label>;
 }
-
-function Input({ icon: Icon, className = "", ...props }) {
-  return (
-    <div className="relative">
-      {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />}
-      <input
-        {...props}
-        className={`w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 pl-${Icon ? "10" : "4"} text-sm text-gray-900 
-          focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-300 ease-out 
-          hover:border-gray-300 placeholder-gray-400 shadow-sm ${className}`}
-      />
-    </div>
-  );
-}
-
 function Select({ className = "", children, ...props }) {
   return (
     <div className="relative group">
@@ -94,7 +66,6 @@ function Select({ className = "", children, ...props }) {
     </div>
   );
 }
-
 function Button({ variant = "solid", className = "", children, ...props }) {
   const variants = {
     solid:
@@ -116,7 +87,6 @@ function Button({ variant = "solid", className = "", children, ...props }) {
     </button>
   );
 }
-
 function StatusBadge({ value }) {
   const meta = statusMeta[value] || statusMeta["Planning"];
   const Icon = meta.Icon;
@@ -127,7 +97,6 @@ function StatusBadge({ value }) {
     </span>
   );
 }
-
 function PriorityBadge({ value }) {
   const pill = priorityPill[value] || priorityPill.Medium;
   const dot = priorityDot[value] || priorityDot.Medium;
@@ -138,7 +107,6 @@ function PriorityBadge({ value }) {
     </span>
   );
 }
-
 function ProgressBar({ value }) {
   const v = Math.min(100, Math.max(0, Number(value) || 0));
   return (
@@ -181,6 +149,8 @@ export default function Projects() {
     startDate: "",
     deadline: "",
     progress: 0,
+    lat: null,
+    lon: null,
   };
   const [form, setForm] = useState(emptyForm);
   const isEditing = useMemo(() => !!form.id, [form.id]);
@@ -198,8 +168,7 @@ export default function Projects() {
       if (query) params.set("q", query);
       if (status) params.set("status", status);
       if (priority) params.set("priority", priority);
-
-      const res = await fetch(`${API_BASE}/api/projects?${params.toString()}`, { headers });
+      const res = await fetch(`${API_BASE}/projects?${params.toString()}`, { headers });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
       const data = await res.json();
       setProjects(data);
@@ -222,9 +191,7 @@ export default function Projects() {
     e.preventDefault();
     setError("");
     try {
-      const url = isEditing
-        ? `${API_BASE}/api/projects/${form.id}`
-        : `${API_BASE}/api/projects`;
+      const url = isEditing ? `${API_BASE}/projects/${form.id}` : `${API_BASE}/projects`;
       const method = isEditing ? "PUT" : "POST";
       const { id, ...payload } = form;
       payload.budget = Number(payload.budget);
@@ -258,6 +225,8 @@ export default function Projects() {
       startDate: p.startDate ? new Date(p.startDate).toISOString().slice(0, 10) : "",
       deadline: p.deadline ? new Date(p.deadline).toISOString().slice(0, 10) : "",
       progress: p.progress ?? 0,
+      lat: Number.isFinite(p.lat) ? p.lat : null,
+      lon: Number.isFinite(p.lon) ? p.lon : null,
     });
     document.getElementById("project-form")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -265,7 +234,7 @@ export default function Projects() {
   const remove = async (id) => {
     if (!confirm("Are you sure you want to delete this project?")) return;
     try {
-      const res = await fetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE", headers });
+      const res = await fetch(`${API_BASE}/projects/${id}`, { method: "DELETE", headers });
       if (!res.ok) throw new Error(`Delete failed (${res.status})`);
       setProjects((xs) => xs.filter((p) => p._id !== id));
     } catch (e) {
@@ -273,51 +242,58 @@ export default function Projects() {
     }
   };
 
+  const refreshWeather = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/projects/${id}/refresh-weather`, { method: "POST", headers });
+      if (!res.ok) throw new Error(`Weather refresh failed (${res.status})`);
+      const updated = await res.json();
+      setProjects((xs) => xs.map((p) => (p._id === updated._id ? updated : p)));
+    } catch (e) {
+      alert(e.message || "Unable to refresh weather");
+    }
+  };
+
+  // ✅ Memoize the map value so it doesn't change reference each render
+  const mapValue = useMemo(() => {
+    return Number.isFinite(form.lat) && Number.isFinite(form.lon)
+      ? { lat: form.lat, lon: form.lon }
+      : null;
+  }, [form.lat, form.lon]);
+
   /* ====================== UI ====================== */
   return (
     <section className="space-y-10 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-gray-50">
       {/* Decorative header */}
       <div className="relative rounded-xl bg-white p-6 shadow-lg ring-1 ring-blue-100/20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-lime-50/50 rounded-xl" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+        <div className="relative grid items-center gap-4 sm:grid-cols-12">
+          <div className="flex items-center gap-3 sm:col-span-4">
             <Building2 className="h-8 w-8 text-blue-600" />
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Construction Projects</h2>
           </div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search projects, clients, or locations..."
-                  className="w-full sm:w-80 rounded-lg border border-gray-200 bg-white pl-10 pr-4 py-2.5 text-sm text-gray-900 
-                    focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-300 ease-out 
-                    placeholder-gray-400 hover:border-gray-300 shadow-sm"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-gray-400" />
-                <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-36">
-                  <option value="">All Status</option>
-                  <option>Planning</option>
-                  <option>In Progress</option>
-                  <option>On Hold</option>
-                  <option>Completed</option>
-                </Select>
-                <Select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-36">
-                  <option value="">All Priority</option>
-                  <option>Low</option>
-                  <option>Medium</option>
-                  <option>High</option>
-                </Select>
-              </div>
+          <div className="sm:col-span-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search projects, clients, or locations..."
+                className="w-full rounded-lg border border-gray-200 bg-white pl-10 pr-4 py-2.5 text-sm text-gray-900 
+                  focus:ring-2 focus:ring-blue-400 focus:border-blue-400 placeholder-gray-400 hover:border-gray-300 shadow-sm"
+              />
             </div>
-            <Button
-              onClick={() => document.getElementById("project-form")?.scrollIntoView({ behavior: "smooth" })}
-              className="whitespace-nowrap"
-            >
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-gray-400" />
+              <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-36">
+                <option value="">All Status</option>
+                <option>Planning</option><option>In Progress</option><option>On Hold</option><option>Completed</option>
+              </Select>
+              <Select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-36">
+                <option value="">All Priority</option>
+                <option>Low</option><option>Medium</option><option>High</option>
+              </Select>
+            </div>
+            <Button onClick={() => document.getElementById("project-form")?.scrollIntoView({ behavior: "smooth" })} className="whitespace-nowrap">
               <PlusCircle className="h-5 w-5" />
               Add New Project
             </Button>
@@ -329,148 +305,167 @@ export default function Projects() {
       <form
         id="project-form"
         onSubmit={handleSubmit}
-        className="grid gap-6 rounded-xl bg-white p-6 shadow-lg ring-1 ring-gray-100/50"
+        className="grid gap-6 rounded-xl bg-white p-6 shadow-lg ring-1 ring-gray-100/50 md:grid-cols-12"
       >
+        {/* Row 1 */}
         <div className="md:col-span-6">
           <Label>Project Name</Label>
-          <Input
+          <input
             required
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Enter project name"
-            className="shadow-sm"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
           />
         </div>
         <div className="md:col-span-3">
           <Label>Status</Label>
-          <Select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className="shadow-sm">
-            <option>Planning</option>
-            <option>In Progress</option>
-            <option>On Hold</option>
-            <option>Completed</option>
+          <Select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+            <option>Planning</option><option>In Progress</option><option>On Hold</option><option>Completed</option>
           </Select>
         </div>
         <div className="md:col-span-3">
           <Label>Priority</Label>
-          <Select value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))} className="shadow-sm">
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
+          <Select value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
+            <option>Low</option><option>Medium</option><option>High</option>
           </Select>
         </div>
 
+        {/* Row 2 */}
         <div className="md:col-span-6">
           <Label>Client</Label>
-          <Input
-            icon={User}
+          <input
             value={form.client}
             onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
             placeholder="Enter client name"
-            className="shadow-sm"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
           />
         </div>
         <div className="md:col-span-6">
-          <Label>Location / Site</Label>
-          <Input
-            icon={MapPin}
-            value={form.location}
-            onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-            placeholder="Enter location"
-            className="shadow-sm"
+          <Label>Owner</Label>
+          <input
+            value={form.owner}
+            onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
+            placeholder="Enter owner name"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
           />
         </div>
 
-        <div className="md:col-span-4">
+        {/* Row 3 */}
+        <div className="md:col-span-6">
+          <Label>Location (text)</Label>
+          <input
+            value={form.location}
+            onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+            placeholder="e.g., Colombo 03"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+        <div className="md:col-span-3">
           <Label>Budget</Label>
-          <Input
-            icon={DollarSign}
-            type="number"
-            min={0}
+          <input
+            type="number" min={0}
             value={form.budget}
             onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))}
             placeholder="Enter budget"
-            className="shadow-sm"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
           />
         </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-3">
           <Label>Currency</Label>
-          <Select
-            value={form.currency}
-            onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-            className="shadow-sm"
-          >
-            <option>LKR</option>
-            <option>USD</option>
-            <option>EUR</option>
-            <option>GBP</option>
-            <option>INR</option>
+          <Select value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}>
+            <option>LKR</option><option>USD</option><option>EUR</option><option>GBP</option><option>INR</option>
           </Select>
         </div>
 
+        {/* Row 4 */}
         <div className="md:col-span-3">
           <Label>Start Date</Label>
-          <Input
-            icon={CalendarDays}
+          <input
             type="date"
             value={form.startDate}
             onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-            className="shadow-sm"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
           />
         </div>
         <div className="md:col-span-3">
           <Label>Deadline</Label>
-          <Input
-            icon={CalendarDays}
+          <input
             type="date"
             value={form.deadline}
             onChange={(e) => setForm((f) => ({ ...f, deadline: e.target.value }))}
-            className="shadow-sm"
-          />
-        </div>
-
-        <div className="md:col-span-6">
-          <Label>Owner</Label>
-          <Input
-            icon={User}
-            value={form.owner}
-            onChange={(e) => setForm((f) => ({ ...f, owner: e.target.value }))}
-            placeholder="Enter owner name"
-            className="shadow-sm"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
           />
         </div>
         <div className="md:col-span-6">
           <Label>Progress: {form.progress}%</Label>
           <input
-            type="range"
-            min={0}
-            max={100}
-            step={1}
+            type="range" min={0} max={100} step={1}
             value={form.progress}
             onChange={(e) => setForm((f) => ({ ...f, progress: e.target.value }))}
-            className="mt-2 w-full h-3 bg-gray-100 rounded-full cursor-pointer accent-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-all duration-300 shadow-sm"
+            className="mt-2 w-full h-3 bg-gray-100 rounded-full cursor-pointer accent-blue-400"
           />
         </div>
 
-        <div className="md:col-span-12">
-          <Label>Description</Label>
-          <textarea
-            rows={4}
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            placeholder="Enter project scope, phases, or notes..."
-            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 
-              focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-300 ease-out 
-              placeholder-gray-400 hover:border-gray-300 resize-y shadow-sm"
+        {/* Row 5 (Map + Lat/Lon) */}
+        <div className="md:col-span-7">
+          <Label>Pick coordinates on map</Label>
+          <MapPicker
+            value={mapValue}  // ✅ stable reference
+            onChange={(pos) =>
+              setForm((f) => {
+                const newLat = pos?.lat ?? null;
+                const newLon = pos?.lon ?? null;
+                // ✅ avoid no-op state updates
+                if (f.lat === newLat && f.lon === newLon) return f;
+                return { ...f, lat: newLat, lon: newLon };
+              })
+            }
+            height={280}
+            defaultCenter={{ lat: 6.9271, lon: 79.8612 }}
           />
         </div>
+        <div className="md:col-span-5 grid grid-cols-2 gap-6">
+          <div>
+            <Label>Latitude</Label>
+            <input
+              type="number" step="any"
+              value={form.lat ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value === "" ? null : Number(e.target.value) }))}
+              placeholder="lat"
+              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+          <div>
+            <Label>Longitude</Label>
+            <input
+              type="number" step="any"
+              value={form.lon ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, lon: e.target.value === "" ? null : Number(e.target.value) }))}
+              placeholder="lon"
+              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+          <div className="col-span-2">
+            <Label>Description</Label>
+            <textarea
+              rows={4}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Enter project scope, phases, or notes..."
+              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+        </div>
 
+        {/* Actions */}
         <div className="md:col-span-12 flex items-center justify-end gap-3">
           {isEditing && (
-            <Button type="button" variant="outline" onClick={resetForm} className="shadow-sm">
+            <Button type="button" variant="outline" onClick={resetForm}>
               Cancel
             </Button>
           )}
-          <Button className="shadow-sm">
+          <Button>
             <TrendingUp className="h-5 w-5" />
             {isEditing ? "Update Project" : "Add Project"}
           </Button>
@@ -478,7 +473,7 @@ export default function Projects() {
       </form>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 shadow-sm">
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           <AlertTriangle className="h-5 w-5" />
           {error}
         </div>
@@ -487,32 +482,26 @@ export default function Projects() {
       {/* Cards */}
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {loading ? (
-          <div className="sm:col-span-2 xl:col-span-3 flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500 shadow-sm">
+          <div className="sm:col-span-2 xl:col-span-3 flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500">
             <Loader2 className="h-5 w-5 animate-spin" />
             Loading projects...
           </div>
         ) : projects.length === 0 ? (
-          <div className="sm:col-span-2 xl:col-span-3 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500 shadow-sm">
+          <div className="sm:col-span-2 xl:col-span-3 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500">
             No projects found. Try adding a new project or adjusting the filters.
           </div>
         ) : (
           projects.map((p) => {
             const dleft = daysLeft(p.deadline);
             const urgency =
-              dleft == null
-                ? ""
-                : dleft < 0
-                ? "text-red-700 bg-red-50 border-red-200"
-                : dleft <= 7
-                ? "text-yellow-700 bg-yellow-50 border-yellow-200"
-                : "text-blue-700 bg-blue-50 border-blue-200";
+              dleft == null ? "" :
+              dleft < 0 ? "text-red-700 bg-red-50 border-red-200" :
+              dleft <= 7 ? "text-yellow-700 bg-yellow-50 border-yellow-200" :
+              "text-blue-700 bg-blue-50 border-blue-200";
+            const WeatherIcon = weatherIcon(p.weather?.code);
 
             return (
-              <article
-                key={p._id}
-                className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-md hover:shadow-xl transition-all duration-300 ease-out transform hover:-translate-y-1"
-              >
-                {/* Accent top border */}
+              <article key={p._id} className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-md hover:shadow-xl transition-all duration-300 ease-out transform hover:-translate-y-1">
                 <div className="h-1.5 w-full bg-gradient-to-r from-blue-400 to-lime-400" />
                 <div className="p-6">
                   <div className="flex items-start justify-between gap-4">
@@ -521,65 +510,61 @@ export default function Projects() {
                         {p.name}
                       </h3>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                        {p.client && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1 transition-colors duration-200 hover:bg-gray-50">
-                            <User className="h-4 w-4" /> {p.client}
-                          </span>
-                        )}
-                        {p.location && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1 transition-colors duration-200 hover:bg-gray-50">
-                            <MapPin className="h-4 w-4" /> {p.location}
-                          </span>
-                        )}
-                        {p.owner && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1 transition-colors duration-200 hover:bg-gray-50">
-                            <Hammer className="h-4 w-4" /> {p.owner}
+                        {p.client && <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1"><User className="h-4 w-4" /> {p.client}</span>}
+                        {p.location && <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1"><MapPin className="h-4 w-4" /> {p.location}</span>}
+                        {p.owner && <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1"><Hammer className="h-4 w-4" /> {p.owner}</span>}
+                        {Number.isFinite(p.lat) && Number.isFinite(p.lon) && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1">
+                            📍 {p.lat.toFixed(3)}, {p.lon.toFixed(3)}
                           </span>
                         )}
                       </div>
                     </div>
-
                     <StatusBadge value={p.status} />
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
                     <PriorityBadge value={p.priority} />
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1 transition-colors duration-200 hover:bg-gray-50">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1">
                       <DollarSign className="h-4 w-4" />
                       {fmtCurrency(p.budget, p.currency)}
                     </span>
                     {p.deadline && (
-                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition-colors duration-200 hover:bg-gray-50 ${urgency}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${urgency}`}>
                         <Clock className="h-4 w-4" />
                         {dleft < 0 ? `Overdue by ${Math.abs(dleft)}d` : `${dleft} days left`}
                       </span>
                     )}
                   </div>
 
+                  {p.weather && (
+                    <div className="mt-4 flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                      <div className="flex items-center gap-2">
+                        <WeatherIcon className="h-5 w-5" />
+                        <span className="font-medium">{p.weather.description || "Weather"}</span>
+                        <span>• {Math.round(p.weather.tempC)}°C</span>
+                        {Number.isFinite(p.weather.windKph) && <span>• {Math.round(p.weather.windKph)} km/h wind</span>}
+                      </div>
+                      <Button variant="subtle" onClick={() => refreshWeather(p._id)}>
+                        Refresh
+                      </Button>
+                    </div>
+                  )}
+
                   <div className="mt-4">
                     <ProgressBar value={p.progress ?? 0} />
                   </div>
 
                   {p.description && (
-                    <p className="mt-3 text-sm text-gray-600 line-clamp-3 group-hover:text-gray-800 transition-colors duration-200">
-                      {p.description}
-                    </p>
+                    <p className="mt-3 text-sm text-gray-600 line-clamp-3">{p.description}</p>
                   )}
 
                   <div className="mt-5 flex gap-2">
-                    <Button
-                      variant="subtle"
-                      onClick={() => startEdit(p)}
-                      className="flex-1 shadow-sm hover:shadow-md transition-all duration-200"
-                    >
+                    <Button variant="subtle" onClick={() => startEdit(p)} className="flex-1">
                       <Edit3 className="h-4 w-4" />
                       Edit
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => remove(p._id)}
-                      className="flex-1 hover:border-red-300 hover:bg-red-50 hover:text-red-600 shadow-sm hover:shadow-md transition-all duration-200"
-                    >
+                    <Button variant="outline" onClick={() => remove(p._id)} className="flex-1 hover:border-red-300 hover:bg-red-50 hover:text-red-600">
                       <Trash2 className="h-4 w-4" />
                       Delete
                     </Button>
