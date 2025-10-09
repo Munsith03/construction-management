@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 
-// sdsdsdd
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const generatePDF = (projects, setError) => {
