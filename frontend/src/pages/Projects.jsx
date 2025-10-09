@@ -1,4 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable"; // Explicitly import autoTable
 import AuthContext from "../context/AuthContext";
 import MapPicker from "../ui/MapPicker";
 import {
@@ -9,41 +11,160 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-/* ====================== Helpers ====================== */
-const fmtCurrency = (amount, currency = "LKR") => {
-  if (Number.isNaN(Number(amount))) return "-";
-  try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount || 0);
-  } catch {
-    return `${currency} ${Number(amount).toLocaleString()}`;
+const generatePDF = (projects, setError) => {
+  if (!Array.isArray(projects) || projects.length === 0) {
+    setError("No projects available to generate PDF.");
+    return;
   }
+
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  // Cover Page
+  doc.setFillColor(13, 59, 102); // Navy blue
+  doc.rect(0, 0, 210, 297, "F");
+  doc.setFillColor(100, 149, 237); // Light blue for gradient effect
+  doc.triangle(0, 0, 210, 0, 210, 297, "F"); // Gradient triangle
+  doc.setFont("times", "bold");
+  doc.setFontSize(30);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Construction Projects Report", 105, 90, { align: "center" });
+  doc.setFont("times", "normal");
+  doc.setFontSize(12);
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 110, { align: "center" });
+  doc.setFontSize(10);
+  doc.setTextColor(220, 220, 220);
+  doc.text("Prepared by: [ConstrucEASE]", 105, 125, { align: "center" });
+  doc.text("[SLIIT] | [ConstrucEASE@GMAIL.COM]", 105, 135, { align: "center" });
+
+  // Add new page for content
+  doc.addPage();
+
+  // Header
+  doc.setFillColor(13, 59, 102); // Navy blue
+  doc.rect(0, 0, 210, 20, "F");
+  doc.setFont("times", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text("[ConstrucEASE]", 10, 12);
+  doc.setFont("times", "normal");
+  doc.setFontSize(10);
+  doc.text("Projects Report", 10, 18);
+  doc.setTextColor(180, 180, 180);
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 160, 12, { align: "right" });
+  doc.text("[Logo Placeholder]", 190, 18, { align: "right" });
+  doc.setDrawColor(100, 149, 237); // Light blue accent line
+  doc.setLineWidth(0.3);
+  doc.line(10, 22, 200, 22); // Header divider
+
+  // Table of Contents
+  doc.setFont("times", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(33, 33, 33);
+  doc.text("Table of Contents", 10, 35);
+  doc.setFont("times", "normal");
+  doc.setFontSize(10);
+  doc.text("1. Project List....................2", 10, 42);
+
+  // Projects Table
+  autoTable(doc, {
+    startY: 50,
+    head: [
+      [
+        "Project Name",
+        "Client",
+        "Location",
+        "Status",
+        "Priority",
+        "Budget",
+        "Deadline",
+      ],
+    ],
+    body: projects.map((p) => [
+      p.name || "N/A",
+      p.client || "N/A",
+      p.location || "N/A",
+      p.status || "N/A",
+      p.priority || "N/A",
+      p.budget ? `${p.currency} ${Number(p.budget).toFixed(2)}` : "N/A",
+      p.deadline ? new Date(p.deadline).toLocaleDateString() : "N/A",
+    ]),
+    margin: { left: 10, right: 10 },
+    styles: {
+      font: "times",
+      fontSize: 9,
+      cellPadding: 3,
+      textColor: [33, 33, 33],
+      lineColor: [180, 180, 180],
+      lineWidth: 0.15,
+      overflow: "linebreak",
+    },
+    headStyles: {
+      fillColor: [13, 59, 102], // Navy blue
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      halign: "center",
+      fontSize: 9.5,
+    },
+    alternateRowStyles: {
+      fillColor: [248, 248, 248], // Very light gray
+    },
+    columnStyles: {
+      0: { cellWidth: 45, halign: "left" }, // Project Name: wider for text
+      1: { cellWidth: 30, halign: "left" }, // Client
+      2: { cellWidth: 30, halign: "left" }, // Location
+      3: { cellWidth: 20, halign: "center" }, // Status: narrower
+      4: { cellWidth: 20, halign: "center" }, // Priority
+      5: { cellWidth: 25, halign: "right" }, // Budget: right-aligned for numbers
+      6: { cellWidth: 20, halign: "center" }, // Deadline
+    },
+    didDrawPage: (data) => {
+      // Footer
+      const pageHeight = doc.internal.pageSize.height;
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.2);
+      doc.line(10, pageHeight - 15, 200, pageHeight - 15); // Divider line
+      doc.setFont("times", "italic");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text("[Your Company Name] - Building the Future", 10, pageHeight - 8);
+      doc.setFont("times", "normal");
+      doc.text("[Your Company Email] | [Your Company Phone]", 105, pageHeight - 8, { align: "center" });
+      doc.text(`Page ${data.pageNumber - 1}`, 200, pageHeight - 8, { align: "right" });
+    },
+  });
+
+  doc.save("projects-report.pdf");
 };
+
 const daysLeft = (deadline) => {
   if (!deadline) return null;
   const d = new Date(deadline);
   const now = new Date();
   return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
 };
+
 const statusMeta = {
   Planning: { color: "bg-blue-100 text-blue-700 border-blue-200", Icon: Layers },
   "In Progress": { color: "bg-lime-100 text-lime-700 border-lime-200", Icon: Hammer },
   "On Hold": { color: "bg-gray-100 text-gray-700 border-gray-200", Icon: PauseCircle },
   Completed: { color: "bg-emerald-100 text-emerald-700 border-emerald-200", Icon: CheckCircle2 },
 };
+
 const priorityPill = {
   High: "bg-red-100 text-red-700 border-red-200",
   Medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
   Low: "bg-blue-100 text-blue-700 border-blue-200",
 };
+
 const priorityDot = { High: "bg-red-500", Medium: "bg-yellow-500", Low: "bg-blue-500" };
 
 const weatherIcon = (code) => {
   if (code == null) return Cloud;
   if ([0, 1].includes(code)) return Sun;
   if ([2, 3, 45, 48].includes(code)) return Cloud;
-  if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code)) return CloudRain;
-  if ([71,73,75,77,85,86].includes(code)) return CloudSnow;
-  if ([95,96,99].includes(code)) return CloudLightning;
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return CloudRain;
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return CloudSnow;
+  if ([95, 96, 99].includes(code)) return CloudLightning;
   return Cloud;
 };
 
@@ -51,6 +172,7 @@ const weatherIcon = (code) => {
 function Label({ children }) {
   return <label className="block text-sm font-medium text-gray-700 mb-1.5 tracking-tight">{children}</label>;
 }
+
 function Select({ className = "", children, ...props }) {
   return (
     <div className="relative group">
@@ -66,10 +188,11 @@ function Select({ className = "", children, ...props }) {
     </div>
   );
 }
+
 function Button({ variant = "solid", className = "", children, ...props }) {
   const variants = {
     solid:
-      "bg-blue-600 text-white hover:bg-blue-700 border border-blue-600 focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 shadow-sm",
+      "bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 shadow-sm",
     outline:
       "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 focus:ring-2 focus:ring-blue-400 focus:ring-offset-2",
     subtle:
@@ -87,6 +210,7 @@ function Button({ variant = "solid", className = "", children, ...props }) {
     </button>
   );
 }
+
 function StatusBadge({ value }) {
   const meta = statusMeta[value] || statusMeta["Planning"];
   const Icon = meta.Icon;
@@ -97,6 +221,7 @@ function StatusBadge({ value }) {
     </span>
   );
 }
+
 function PriorityBadge({ value }) {
   const pill = priorityPill[value] || priorityPill.Medium;
   const dot = priorityDot[value] || priorityDot.Medium;
@@ -107,6 +232,7 @@ function PriorityBadge({ value }) {
     </span>
   );
 }
+
 function ProgressBar({ value }) {
   const v = Math.min(100, Math.max(0, Number(value) || 0));
   return (
@@ -134,6 +260,7 @@ export default function Projects() {
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState(null); // Added form error state
 
   const emptyForm = {
     id: null,
@@ -152,6 +279,7 @@ export default function Projects() {
     lat: null,
     lon: null,
   };
+
   const [form, setForm] = useState(emptyForm);
   const isEditing = useMemo(() => !!form.id, [form.id]);
 
@@ -187,8 +315,23 @@ export default function Projects() {
 
   const resetForm = () => setForm(emptyForm);
 
+  // Form Validation
+  const validateForm = () => {
+    setFormError(null);
+    const requiredFields = ["name", "client", "location", "budget", "startDate", "deadline"];
+    for (const field of requiredFields) {
+      if (!form[field]) {
+        setFormError(`Field ${field} is required!`);
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return; // Prevent submission if validation fails
+
     setError("");
     try {
       const url = isEditing ? `${API_BASE}/projects/${form.id}` : `${API_BASE}/projects`;
@@ -253,7 +396,6 @@ export default function Projects() {
     }
   };
 
-  // ✅ Memoize the map value so it doesn't change reference each render
   const mapValue = useMemo(() => {
     return Number.isFinite(form.lat) && Number.isFinite(form.lon)
       ? { lat: form.lat, lon: form.lon }
@@ -271,6 +413,7 @@ export default function Projects() {
             <Building2 className="h-8 w-8 text-blue-600" />
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Construction Projects</h2>
           </div>
+          
           <div className="sm:col-span-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
@@ -301,12 +444,27 @@ export default function Projects() {
         </div>
       </div>
 
+      {/* Generate PDF Button */}
+      <div className="flex justify-end mb-4">
+        <Button onClick={() => generatePDF(projects, setError)} variant="solid">
+  Generate PDF
+</Button>
+      </div>
+
       {/* Form Card */}
       <form
         id="project-form"
         onSubmit={handleSubmit}
         className="grid gap-6 rounded-xl bg-white p-6 shadow-lg ring-1 ring-gray-100/50 md:grid-cols-12"
       >
+        {/* Validation Error */}
+        {formError && (
+          <div className="col-span-12 bg-red-100 text-red-700 p-4 rounded-md">
+            <AlertTriangle className="h-5 w-5 inline-block mr-2" />
+            {formError}
+          </div>
+        )}
+        
         {/* Row 1 */}
         <div className="md:col-span-6">
           <Label>Project Name</Label>
@@ -315,6 +473,16 @@ export default function Projects() {
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Enter project name"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
+          />
+        </div>
+        <div className="md:col-span-6">
+          <Label>Pbbdfme</Label>
+          <input
+            required
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            placeholder="Evdjdkame"
             className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400"
           />
         </div>
@@ -411,12 +579,11 @@ export default function Projects() {
         <div className="md:col-span-7">
           <Label>Pick coordinates on map</Label>
           <MapPicker
-            value={mapValue}  // ✅ stable reference
+            value={mapValue}
             onChange={(pos) =>
               setForm((f) => {
                 const newLat = pos?.lat ?? null;
                 const newLon = pos?.lon ?? null;
-                // ✅ avoid no-op state updates
                 if (f.lat === newLat && f.lon === newLon) return f;
                 return { ...f, lat: newLat, lon: newLon };
               })
@@ -527,7 +694,7 @@ export default function Projects() {
                     <PriorityBadge value={p.priority} />
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1">
                       <DollarSign className="h-4 w-4" />
-                      {fmtCurrency(p.budget, p.currency)}
+                      {p.budget ? `${p.currency} ${Number(p.budget).toFixed(2)}` : "N/A"}
                     </span>
                     {p.deadline && (
                       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${urgency}`}>

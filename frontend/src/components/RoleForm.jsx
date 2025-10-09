@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import Button from "./Button";
 import Input from "./Input";
 import LoadingSpinner from "./LoadingSpinner";
+import { XMarkIcon, PlusIcon, PencilIcon } from "@heroicons/react/24/outline";
 
 const RoleForm = ({
   onSubmit,
@@ -17,19 +18,22 @@ const RoleForm = ({
     permissionIds: initialData.permissions?.map((p) => p._id) || [],
   });
   const [errors, setErrors] = useState({});
+  const modalRef = useRef(null);
+  const firstFocusableRef = useRef(null);
 
+  // Validate form
   const validateForm = () => {
     const newErrors = {};
     if (!formData.name.trim()) {
       newErrors.name = "Role name is required";
-    }
-    if (formData.name.length > 50) {
+    } else if (formData.name.length > 50) {
       newErrors.name = "Role name cannot exceed 50 characters";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // Handle input changes
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (type === "checkbox") {
@@ -45,6 +49,7 @@ const RoleForm = ({
     }
   };
 
+  // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
@@ -52,18 +57,91 @@ const RoleForm = ({
     }
   };
 
+  // Handle backdrop click to cancel (with confirmation if form is dirty)
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      if (
+        formData.name ||
+        formData.permissionIds.length > 0 ||
+        isEditing
+      ) {
+        if (window.confirm("Discard unsaved changes?")) {
+          onCancel();
+        }
+      } else {
+        onCancel();
+      }
+    }
+  };
+
+  // Focus trap for accessibility
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        handleBackdropClick({ target: modalRef.current });
+      }
+      if (e.key === "Tab") {
+        const focusableElements = modalRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+    };
+
+    if (modalRef.current) {
+      firstFocusableRef.current?.focus();
+      document.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] z-50 flex items-center justify-center">
-      <div className="w-full max-w-lg mx-auto px-4 sm:px-6 lg:px-8 ">
-        <div className="bg-white shadow-sm rounded-lg p-6">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+    <div
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center transition-opacity duration-300 animate-fade-in"
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="role-form-title"
+      ref={modalRef}
+    >
+      <div className="w-full max-w-md sm:max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white shadow-lg rounded-xl p-6 sm:p-8 border border-gray-200 relative">
+          {/* Close Button */}
+          <button
+            onClick={onCancel}
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-full p-1"
+            aria-label="Close form"
+            ref={firstFocusableRef}
+          >
+            <XMarkIcon className="w-6 h-6" />
+          </button>
+
+          {/* Form Header */}
+          <h2
+            id="role-form-title"
+            className="text-3xl font-bold text-gray-900 mb-8"
+          >
             {isEditing ? "Edit Role" : "Create New Role"}
           </h2>
-          <form onSubmit={handleSubmit} className="space-y-6">
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Role Name */}
             <div>
               <label
                 htmlFor="name"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-base font-semibold text-gray-700"
               >
                 Role Name
               </label>
@@ -74,44 +152,60 @@ const RoleForm = ({
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="Enter role name"
-                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${
+                className={`mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base ${
                   errors.name ? "border-red-500" : ""
                 }`}
                 disabled={isLoading}
+                aria-describedby={errors.name ? "name-error" : undefined}
               />
               {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                <p id="name-error" className="mt-2 text-sm text-red-800 bg-red-50 p-2 rounded">
+                  {errors.name}
+                </p>
               )}
             </div>
+
+            {/* Permissions */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3">
-                Permissions
-              </h3>
-              <div className="grid grid-cols-1 gap-3 max-h-64 overflow-y-auto pr-2">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Permissions</h3>
+                {formData.permissionIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, permissionIds: [] }))}
+                    className="text-sm text-indigo-600 hover:text-indigo-800"
+                    aria-label="Clear all permissions"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-4 max-h-80 overflow-y-auto p-4 bg-gray-50 rounded-lg border border-gray-200">
                 {permissions.length === 0 ? (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-base text-gray-500 text-center">
                     No permissions available
                   </p>
                 ) : (
                   permissions.map((perm) => (
                     <label
                       key={perm._id}
-                      className="flex items-center space-x-3 rounded-md p-2 hover:bg-gray-50 transition-colors duration-200"
+                      className="flex items-center space-x-4 p-3 rounded-lg hover:bg-indigo-50 transition-colors duration-200"
                     >
                       <input
                         type="checkbox"
                         value={perm._id}
                         checked={formData.permissionIds.includes(perm._id)}
                         onChange={handleChange}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+                        className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
                         disabled={isLoading}
+                        aria-label={`Select permission ${perm.name}`}
                       />
                       <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-base font-medium text-gray-900">
                           {perm.name}
                         </span>
                         {perm.description && (
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-600">
                             {perm.description}
                           </p>
                         )}
@@ -121,29 +215,41 @@ const RoleForm = ({
                 )}
               </div>
             </div>
-            <div className="flex justify-end space-x-3">
-              <Button
-                type="button"
-                onClick={onCancel}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
+
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-4">
+<Button
+  type="button"
+  onClick={onCancel}
+  className="inline-flex items-center px-6 py-3 border border-gray-300 text-black font-medium rounded-lg bg-gray-500 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px]"
+  disabled={isLoading}
+  aria-label="Cancel form"
+>
+  <XMarkIcon className="w-5 h-5 mr-2" />
+  Cancel
+</Button>
+
               <Button
                 type="submit"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px]"
                 disabled={isLoading}
+                aria-label={isEditing ? "Update role" : "Create role"}
               >
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
-                    <LoadingSpinner size="sm" color="Black" />
+                    <LoadingSpinner size="md" color="white" />
                     <span>{isEditing ? "Updating..." : "Creating..."}</span>
                   </div>
                 ) : isEditing ? (
-                  "Update Role"
+                  <>
+                    <PencilIcon className="w-5 h-5 mr-2" />
+                    Update Role
+                  </>
                 ) : (
-                  "Create Role"
+                  <>
+                    <PlusIcon className="w-5 h-5 mr-2" />
+                    Create Role
+                  </>
                 )}
               </Button>
             </div>

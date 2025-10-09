@@ -30,20 +30,45 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(roleMiddleware("Super Admin"));
 
-router.post("/roles", validateCreateRole, createRole);
-router.get("/roles", getRoles);
-router.put("/roles/:id", validateUpdateRole, updateRole);
-router.delete("/roles/:id", deleteRole);
-router.post("/permissions", validatePermission, createPermission);
-router.get("/permissions", getPermissions);
-router.delete("/permissions/:id", deletePermission);
-router.post("/users/:userId/roles", validateAssignRole, assignRoleToUser);
+router.post(
+  "/roles",
+  permissionMiddleware("createRole"),
+  validateCreateRole,
+  createRole
+);
+router.get("/roles", permissionMiddleware("getRoles"), getRoles);
+router.put(
+  "/roles/:id",
+  permissionMiddleware("updateRole"),
+  validateUpdateRole,
+  updateRole
+);
+router.delete("/roles/:id", permissionMiddleware("deleteRole"), deleteRole);
+router.post(
+  "/permissions",
+  permissionMiddleware("createPermission"),
+  validatePermission,
+  createPermission
+);
+router.get("/permissions", permissionMiddleware("createRole"), getPermissions);
+router.delete(
+  "/permissions/:id",
+  permissionMiddleware("deletePermission"),
+  deletePermission
+);
+router.post(
+  "/users/:userId/roles",
+  permissionMiddleware("assignRoleToUser"),
+  validateAssignRole,
+  assignRoleToUser
+);
 router.delete(
   "/users/:userId/roles/:roleId",
+  permissionMiddleware("removeRoleFromUser"),
   validateAssignRole,
   removeRoleFromUser
 );
-router.get("/users", permissionMiddleware("viewUsers"), getUsers);
+router.get("/users", permissionMiddleware("getUsers"), getUsers);
 router.delete("/users/:userId", permissionMiddleware("deleteUser"), deleteUser);
 
 export default router;

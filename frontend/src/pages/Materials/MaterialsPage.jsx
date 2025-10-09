@@ -1,8 +1,8 @@
-// src/pages/Materials/MaterialsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, X, Search } from "lucide-react";
+import { jsPDF } from "jspdf";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 async function request(path, options = {}) {
   const res = await fetch(API_BASE + path, {
@@ -106,8 +106,131 @@ export default function MaterialsPage() {
     } catch (e) { setErr(e.message); }
     finally { setSaving(false); }
   }
+const generatePDF = (rows, setErr) => {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    setErr("No materials available to generate PDF.");
+    return;
+  }
+
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  // Cover Page
+  doc.setFillColor(13, 59, 102); // Navy blue
+  doc.rect(0, 0, 210, 297, "F");
+  doc.setFillColor(100, 149, 237); // Light blue for gradient effect
+  doc.triangle(0, 0, 210, 0, 210, 297, "F"); // Gradient triangle
+  doc.setFont("times", "bold");
+  doc.setFontSize(30);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Materials Inventory Report", 105, 90, { align: "center" });
+  doc.setFont("times", "normal");
+  doc.setFontSize(12);
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 110, { align: "center" });
+  doc.setFontSize(10);
+  doc.setTextColor(220, 220, 220);
+  doc.text("Prepared by: [Your Company Name]", 105, 125, { align: "center" });
+  doc.text("[Your Company Address] | [Your Company Email]", 105, 135, { align: "center" });
+
+  // Add new page for content
+  doc.addPage();
+
+  // Header
+  doc.setFillColor(13, 59, 102); // Navy blue
+  doc.rect(0, 0, 210, 20, "F");
+  doc.setFont("times", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text("[Your Company Name]", 10, 12);
+  doc.setFont("times", "normal");
+  doc.setFontSize(10);
+  doc.text("Materials Inventory Report", 10, 18);
+  doc.setTextColor(180, 180, 180);
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 160, 12, { align: "right" });
+  doc.text("[Logo Placeholder]", 190, 18, { align: "right" });
+  doc.setDrawColor(100, 149, 237); // Light blue accent line
+  doc.setLineWidth(0.3);
+  doc.line(10, 22, 200, 22); // Header divider
+
+  // Table of Contents
+  doc.setFont("times", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(33, 33, 33);
+  doc.text("Table of Contents", 10, 35);
+  doc.setFont("times", "normal");
+  doc.setFontSize(10);
+  doc.text("1. Materials List....................2", 10, 42);
+
+  // Materials Table
+  autoTable(doc, {
+    startY: 50,
+    head: [
+      [
+        "Name",
+        "SKU",
+        "Unit",
+        "On Hand",
+        "Reorder Level",
+        "Unit Cost",
+      ],
+    ],
+    body: rows.map((row) => [
+      row.name || "N/A",
+      row.sku || "N/A",
+      row.unit || "N/A",
+      qty(row.onHand, row.unit),
+      qty(row.reorderLevel, row.unit),
+      money(row.unitCost),
+    ]),
+    margin: { left: 10, right: 10 },
+    styles: {
+      font: "times",
+      fontSize: 9,
+      cellPadding: 3,
+      textColor: [33, 33, 33],
+      lineColor: [180, 180, 180],
+      lineWidth: 0.15,
+      overflow: "linebreak",
+    },
+    headStyles: {
+      fillColor: [13, 59, 102], // Navy blue
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      halign: "center",
+      fontSize: 9.5,
+    },
+    alternateRowStyles: {
+      fillColor: [248, 248, 248], // Very light gray
+    },
+    columnStyles: {
+      0: { cellWidth: 50, halign: "left" }, // Name: wider for text
+      1: { cellWidth: 30, halign: "left" }, // SKU
+      2: { cellWidth: 20, halign: "left" }, // Unit
+      3: { cellWidth: 25, halign: "right" }, // On Hand: right-aligned
+      4: { cellWidth: 25, halign: "right" }, // Reorder Level
+      5: { cellWidth: 30, halign: "right" }, // Unit Cost
+    },
+    didDrawPage: (data) => {
+      // Footer
+      const pageHeight = doc.internal.pageSize.height;
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.2);
+      doc.line(10, pageHeight - 15, 200, pageHeight - 15); // Divider line
+      doc.setFont("times", "italic");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text("[Your Company Name] - Building the Future", 10, pageHeight - 8);
+      doc.setFont("times", "normal");
+      doc.text("[Your Company Email] | [Your Company Phone]", 105, pageHeight - 8, { align: "center" });
+      doc.text(`Page ${data.pageNumber - 1}`, 200, pageHeight - 8, { align: "right" });
+    },
+  });
+  doc.save("materials-report.pdf");
+};
+
+
 
   const data = useMemo(() => rows, [rows]);
+
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
@@ -130,6 +253,12 @@ export default function MaterialsPage() {
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             <Plus className="h-4 w-4" /> New
+          </button>
+          <button
+            onClick={generatePDF}
+            className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
+          >
+            Generate Report
           </button>
         </div>
       </div>

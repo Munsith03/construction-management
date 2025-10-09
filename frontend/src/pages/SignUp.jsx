@@ -132,7 +132,7 @@ const SignUp = () => {
 
           <div className="space-y-3">
             <a
-              href={`${import.meta.env.VITE_API_URL}/api/auth/google`}
+              href={`${import.meta.env.VITE_API_URL}/auth/google`}
               className="w-full flex items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors"
             >
               <img
@@ -141,39 +141,6 @@ const SignUp = () => {
                 className="w-5 h-5 mr-4"
               />
               Continue with Google
-            </a>
-            <a
-              href={`${import.meta.env.VITE_API_URL}/api/auth/facebook`}
-              className="w-full flex items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors"
-            >
-              <img
-                src="https://www.svgrepo.com/show/355033/facebook.svg"
-                alt="Facebook"
-                className="w-5 h-5 mr-4"
-              />
-              Continue with Facebook
-            </a>
-            <a
-              href={`${import.meta.env.VITE_API_URL}/api/auth/github`}
-              className="w-full flex items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors"
-            >
-              <img
-                src="https://www.svgrepo.com/show/355036/github.svg"
-                alt="GitHub"
-                className="w-5 h-5 mr-4"
-              />
-              Continue with GitHub
-            </a>
-            <a
-              href={`${import.meta.env.VITE_API_URL}/api/auth/apple`}
-              className="w-full flex items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors"
-            >
-              <img
-                src="https://www.svgrepo.com/show/355032/apple.svg"
-                alt="Apple"
-                className="w-5 h-5 mr-4"
-              />
-              Continue with Apple
             </a>
           </div>
 

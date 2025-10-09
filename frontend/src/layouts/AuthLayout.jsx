@@ -7,7 +7,7 @@ function AuthLayout() {
   return (
     <div className="flex h-screen font-sourceSans relative">
       <button
-        onClick={() => navigate("/")}
+        onClick={() => navigate("/home")}
         className="absolute top-6 left-6 flex items-center text-white gap-2 px-4 py-2 rounded-full  transition-all duration-200"
         aria-label="Return to main site"
       >
@@ -16,12 +16,17 @@ function AuthLayout() {
       </button>
 
       {/* Sidebar */}
-      <div className="hidden lg:flex flex-col justify-center bg-black text-white p-20 w-1/3 shadow-xl">
-        <h1 className="text-5xl font-extrabold">UISplash</h1>
-        <p className="mt-6 text-lg leading-relaxed">
-          Get access to{" "}
-          <span className="font-semibold text-green-400">442,527+</span> free
-          web UI components you can’t find anywhere else.
+      <div className="hidden lg:flex flex-col justify-center bg-black p-20 w-1/3 shadow-xl">
+        <h1 className="text-5xl font-bold text-[#F5C242]">
+          ConsructEase
+        </h1>
+        <p className="mt-6 text-lg text-gray-300 leading-relaxed">
+          Build your vision with{" "}
+          <span className="font-semibold text-[#F5C242]">
+            award-winning construction
+          </span>{" "}
+          services, delivering unmatched quality and precision for commercial
+          and residential projects.
         </p>
       </div>
 

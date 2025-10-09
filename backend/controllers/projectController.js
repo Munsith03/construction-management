@@ -1,5 +1,36 @@
 // server/controllers/projectController.js
 import Project from "../models/Project.js";
+import nodemailer from 'nodemailer';
+
+
+
+// Email configuration
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // You can change this to another email service (e.g., SendGrid, Mailgun, etc.)
+  auth: {
+    user: process.env.EMAIL_USER, // Your email
+    pass: process.env.EMAIL_PASS,  // Your email password or app-specific password
+  },
+});
+
+
+// Function to send email
+const sendEmailToManager = async (projectName, managerEmail) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER, // Sender's email
+    to: "gpt16020@gmail.com", // Manager's email (can be hardcoded)
+    subject: `New Project Created: ${projectName}`,
+    text: `A new project named "${projectName}" has been successfully created.`, // Email body
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully to the manager!');
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+};
+
 
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
@@ -152,10 +183,23 @@ export const getProject = asyncHandler(async (req, res) => {
 });
 
 export const createProject = asyncHandler(async (req, res) => {
+  // Coerce the payload
   const base = coerceProjectPayload(req.body);
-  if (!base.name) return res.status(400).json({ message: "Name is required" });
+
+  // Validate that the project name is provided
+  if (!base.name) return res.status(400).json({ message: 'Name is required' });
+
+  // Enrich the project payload
   const payload = await enrichProject(base);
+
+  // Create the project in the database
   const created = await Project.create(payload);
+
+  // Send an email to the manager once the project is successfully created
+  const managerEmail = 'manager-email@example.com'; // Hardcoded manager email
+  await sendEmailToManager(created.name, managerEmail);
+
+  // Respond with the created project
   res.status(201).json(created);
 });
 
